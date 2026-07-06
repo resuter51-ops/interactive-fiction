@@ -276,7 +276,7 @@ body {
 
   <div class="story-area" id="story-area">
     <div class="story-text" id="story-text"></div>
-    <div class="choices" id="choices"></div>\n    <div id="debug-output" style="color:yellow;font-size:12px;padding:10px;font-family:monospace;"></div>
+    <div class="choices" id="choices"></div>
   </div>
 
   <div class="inventory-panel" id="inv-panel">
@@ -940,10 +940,10 @@ const Engine = {
     }
 
     // Update HUD
-    try { this.updateHUD(); } catch(e) { this.debugError('updateHUD: ' + e.message); }
+    try { this.updateHUD(); } catch(e) { console.error('updateHUD:', e); }
 
     // Save game
-    try { this.saveGame(); } catch(e) { this.debugError('saveGame: ' + e.message); }
+    try { this.saveGame(); } catch(e) { console.error('saveGame:', e); }
 
     // Render text
     const textEl = document.getElementById('story-text');
