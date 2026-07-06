@@ -947,13 +947,15 @@ const Engine = {
     const textEl = document.getElementById('story-text');
     const choicesEl = document.getElementById('choices');
 
-    if (this.settings.typewriter) {
+    // Always render choices, with typewriter as a visual effect on top
+    textEl.innerHTML = scene.text;
+    this.renderChoices(scene, choicesEl);
+    
+    if (this.settings.typewriter && scene.text) {
+      // Re-run typewriter effect but choices are already in DOM
       this.typewriter(scene.text, textEl, () => {
-        this.renderChoices(scene, choicesEl);
+        // Choices already rendered, just restore formatted text
       });
-    } else {
-      textEl.innerHTML = scene.text;
-      this.renderChoices(scene, choicesEl);
     }
 
     // Check for ending
