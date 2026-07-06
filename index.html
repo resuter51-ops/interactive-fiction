@@ -931,7 +931,7 @@ const Engine = {
     // Process onEnter effects
     try {
       if (scene.onEnter) this.applyEffects(scene.onEnter);
-    } catch(e) { this.debugError('onEnter: ' + e.message); }
+    } catch(e) { console.error('onEnter:', e); }
 
     // Check for death
     if (this.player.hp <= 0) {
@@ -952,10 +952,8 @@ const Engine = {
     // Render text and choices immediately
     try {
       textEl.innerHTML = scene.text;
-      this.debugLog('About to render choices. scene.choices = ' + JSON.stringify(scene.choices ? scene.choices.length : 'none'));
       this.renderChoices(scene, choicesEl);
-      this.debugLog('Choices rendered. el.children = ' + choicesEl.children.length);
-    } catch(e) { this.debugError('render: ' + e.message + ' stack: ' + e.stack); }
+    } catch(e) { console.error('Render error:', e); }
 
     // Check for ending
     if (scene.ending) {
@@ -1223,17 +1221,7 @@ const Engine = {
     toast.innerHTML = `<div class="ach-label">★ Achievement Unlocked</div><div class="ach-name">${ach.name}</div>`;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
-  },
-
-  debugLog(msg) {
-    const dbg = document.getElementById('debug-output');
-    if (dbg) dbg.innerHTML += '<div>' + msg + '</div>';
-  },
-
-  debugError(msg) {
-    const dbg = document.getElementById('debug-output');
-    if (dbg) dbg.innerHTML += '<div style="color:red">ERROR: ' + msg + '</div>';
-  },
+  }
 };
 
 // --- Boot ---
