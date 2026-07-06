@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="description" content="An interactive fiction adventure in the Salvager universe by R. E. Suter">
+<title>The Salvager's Choice — Interactive Fiction</title>
+<style>
+/* ===================== RESET & BASE ===================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  background: #0a0a12;
+  color: #d4d0c8;
+  font-family: Georgia, 'Times New Roman', serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ===================== COLOR PALETTE ===================== */
+:root {
+  --bg-dark: #0a0a12;
+  --bg-panel: #12121e;
+  --bg-panel-light: #1a1a2e;
+  --border: #2a2a3e;
+  --text-main: #d4d0c8;
+  --text-dim: #6a6a7a;
+  --text-bright: #e8e4d8;
+  --accent-gold: #c9a84c;
+  --accent-gold-dim: #8a7430;
+  --accent-red: #a02828;
+  --accent-green: #2d8a4e;
+  --accent-blue: #3a6ea5;
+  --accent-purple: #7a4ca0;
+  --shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+/* ===================== SCREENS ===================== */
+.screen { display: none; width: 100%; max-width: 680px; min-height: 100vh; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ===================== TITLE SCREEN ===================== */
+#title-screen { align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
+.title-eyebrow { font-size: 0.75em; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent-gold-dim); margin-bottom: 12px; }
+.title-main { font-size: 2.4em; color: var(--accent-gold); line-height: 1.2; margin-bottom: 8px; text-shadow: 0 0 30px rgba(201,168,76,0.15); }
+.title-sub { font-size: 1.05em; color: var(--text-dim); margin-bottom: 6px; font-style: italic; }
+.title-author { font-size: 0.85em; color: var(--text-dim); margin-bottom: 40px; }
+
+.title-ornament { width: 200px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent-gold-dim), transparent); margin: 20px auto; }
+
+.title-actions { display: flex; flex-direction: column; gap: 12px; width: 280px; }
+
+.title-footer { margin-top: 40px; font-size: 0.7em; color: var(--text-dim); letter-spacing: 0.1em; }
+
+/* ===================== BUTTONS ===================== */
+.btn {
+  background: var(--bg-panel-light);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 14px 24px;
+  font-size: 1em;
+  font-family: Georgia, serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 2px;
+  letter-spacing: 0.05em;
+}
+.btn:hover, .btn:focus { background: var(--bg-panel); border-color: var(--accent-gold-dim); color: var(--accent-gold); }
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: linear-gradient(180deg, var(--accent-gold-dim), #6a5800); border-color: var(--accent-gold); color: #1a1a00; font-weight: bold; }
+.btn-primary:hover, .btn-primary:focus { background: linear-gradient(180deg, var(--accent-gold), var(--accent-gold-dim)); color: #000; }
+.btn-small { padding: 8px 16px; font-size: 0.8em; }
+.btn-danger { border-color: var(--accent-red); color: #d44; }
+.btn-danger:hover { background: rgba(160,40,40,0.2); color: #f44; }
+
+/* ===================== GAME SCREEN ===================== */
+#game-screen { padding: 0; }
+
+/* HUD BAR */
+.hud-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.hud-left, .hud-right { display: flex; align-items: center; gap: 14px; }
+.hud-label { font-size: 0.7em; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* HP BAR */
+.hp-container { display: flex; align-items: center; gap: 8px; }
+.hp-bar-bg { width: 120px; height: 16px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+.hp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-red), #d44); transition: width 0.4s ease; }
+.hp-bar-fill.healthy { background: linear-gradient(90deg, var(--accent-green), #4d4); }
+.hp-bar-fill.wounded { background: linear-gradient(90deg, var(--accent-gold), #ea4); }
+.hp-bar-fill.critical { background: linear-gradient(90deg, var(--accent-red), #d44); }
+.hp-text { font-size: 0.75em; color: var(--text-dim); min-width: 55px; }
+
+/* ICONS */
+.hud-icon { font-size: 1.1em; cursor: pointer; transition: color 0.2s; }
+.hud-icon:hover { color: var(--accent-gold); }
+
+/* STORY AREA */
+.story-area {
+  flex: 1;
+  padding: 30px 24px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.story-text {
+  font-size: 1.05em;
+  line-height: 1.8;
+  color: var(--text-main);
+  margin-bottom: 24px;
+  min-height: 60px;
+}
+.story-text p { margin-bottom: 16px; }
+.story-text .narration { color: var(--text-main); }
+.story-text .dialogue { color: var(--accent-gold); font-style: italic; }
+.story-text .thought { color: var(--text-dim); font-style: italic; }
+.story-text .danger { color: var(--accent-red); font-weight: bold; }
+.story-text .reward { color: var(--accent-green); font-weight: bold; }
+.story-text .item-get { color: var(--accent-blue); font-weight: bold; }
+
+/* CHOICES */
+.choices { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.choice-btn {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 14px 20px;
+  font-size: 0.95em;
+  font-family: Georgia, serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 2px;
+  text-align: left;
+  line-height: 1.5;
+  position: relative;
+  padding-left: 38px;
+}
+.choice-btn::before { content: '▶'; position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--accent-gold-dim); font-size: 0.7em; transition: color 0.2s; }
+.choice-btn:hover, .choice-btn:focus { background: var(--bg-panel-light); border-color: var(--accent-gold-dim); color: var(--text-bright); outline: none; }
+.choice-btn:hover::before { color: var(--accent-gold); }
+.choice-btn:active { transform: translateY(1px); }
+.choice-btn.locked { opacity: 0.4; cursor: not-allowed; }
+.choice-btn.locked::before { content: '🔒'; color: var(--text-dim); }
+.choice-btn.locked:hover { background: var(--bg-panel); border-color: var(--border); }
+.choice-btn .choice-hint { display: block; font-size: 0.8em; color: var(--text-dim); margin-top: 4px; font-style: italic; }
+
+/* EFFECT NOTIFICATIONS */
+.effect-notif {
+  display: inline-block;
+  padding: 4px 12px;
+  margin: 2px;
+  border-radius: 2px;
+  font-size: 0.85em;
+  animation: notifSlide 0.5s ease;
+}
+.effect-notif.hp-dmg { color: var(--accent-red); border: 1px solid rgba(160,40,40,0.3); }
+.effect-notif.hp-heal { color: var(--accent-green); border: 1px solid rgba(45,138,78,0.3); }
+.effect-notif.item-add { color: var(--accent-blue); border: 1px solid rgba(58,110,165,0.3); }
+.effect-notif.item-remove { color: var(--accent-purple); border: 1px solid rgba(122,76,160,0.3); }
+.effect-notif.flag-set { color: var(--accent-gold); border: 1px solid rgba(201,168,76,0.3); }
+@keyframes notifSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* INVENTORY PANEL */
+.inventory-panel {
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  padding: 14px 20px;
+  display: none;
+}
+.inventory-panel.visible { display: block; }
+.inv-title { font-size: 0.7em; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 8px; }
+.inv-items { display: flex; flex-wrap: wrap; gap: 8px; }
+.inv-item { font-size: 0.85em; padding: 4px 12px; background: var(--bg-panel-light); border: 1px solid var(--border); border-radius: 2px; color: var(--accent-blue); }
+.inv-empty { font-size: 0.8em; color: var(--text-dim); font-style: italic; }
+
+/* END SCREEN */
+#end-screen { align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
+.end-title { font-size: 2.2em; margin-bottom: 16px; line-height: 1.2; }
+.end-title.victory { color: var(--accent-gold); text-shadow: 0 0 30px rgba(201,168,76,0.2); }
+.end-title.defeat { color: var(--accent-red); }
+.end-title.neutral { color: var(--accent-blue); }
+.end-subtitle { font-size: 1em; color: var(--text-dim); font-style: italic; margin-bottom: 24px; }
+.end-stats { background: var(--bg-panel); border: 1px solid var(--border); padding: 24px; border-radius: 2px; margin-bottom: 30px; width: 100%; max-width: 400px; }
+.end-stats h3 { font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-dim); margin-bottom: 12px; }
+.end-stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.9em; }
+.end-stat-row:last-child { border-bottom: none; }
+.end-stat-label { color: var(--text-dim); }
+.end-stat-value { color: var(--accent-gold); }
+.end-actions { display: flex; flex-direction: column; gap: 12px; width: 280px; }
+
+/* FADE ANIMATION */
+.fade-in { animation: fadeIn 0.6s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* TYPEWRITER CURSOR */
+.tw-cursor { animation: blink 0.8s infinite; color: var(--accent-gold); }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* SETTINGS */
+.settings-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 100; }
+.settings-overlay.visible { display: flex; }
+.settings-box { background: var(--bg-panel); border: 1px solid var(--border); padding: 30px; border-radius: 4px; width: 90%; max-width: 400px; }
+.settings-box h2 { color: var(--accent-gold); margin-bottom: 20px; font-size: 1.3em; }
+.setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.setting-row:last-of-type { border-bottom: none; margin-bottom: 16px; }
+.setting-label { font-size: 0.9em; }
+.toggle-switch { width: 44px; height: 24px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; position: relative; transition: background 0.2s; }
+.toggle-switch.on { background: var(--accent-gold-dim); }
+.toggle-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: var(--text-main); border-radius: 50%; transition: left 0.2s; }
+.toggle-switch.on::after { left: 22px; background: #1a1a00; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-gold-dim); }
+
+/* ACHIEVEMENTS */
+.ach-toast { position: fixed; top: 20px; right: 20px; background: var(--bg-panel); border: 1px solid var(--accent-gold); padding: 12px 20px; border-radius: 4px; z-index: 200; animation: achSlide 0.5s ease; max-width: 300px; }
+.ach-toast .ach-label { font-size: 0.7em; color: var(--accent-gold); text-transform: uppercase; letter-spacing: 0.1em; }
+.ach-toast .ach-name { font-size: 1em; color: var(--text-bright); margin-top: 4px; }
+@keyframes achSlide { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+
+/* MOBILE */
+@media (max-width: 600px) {
+  .title-main { font-size: 1.8em; }
+  .hp-bar-bg { width: 80px; }
+  .story-text { font-size: 1em; }
+  .choice-btn { padding: 12px 16px 12px 34px; font-size: 0.9em; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== TITLE SCREEN ===================== -->
+<div class="screen active" id="title-screen">
+  <div class="title-eyebrow">An Interactive Fiction Adventure</div>
+  <div class="title-main">The Salvager's Choice</div>
+  <div class="title-sub">In the ruins of the old world, every decision matters.</div>
+  <div class="title-author">by R. E. Suter</div>
+  <div class="title-ornament"></div>
+  <div class="title-actions">
+    <button class="btn btn-primary" id="start-btn">Begin Adventure</button>
+    <button class="btn" id="continue-btn" style="display:none">Continue Story</button>
+    <button class="btn btn-small" id="settings-btn">Settings</button>
+  </div>
+  <div class="title-footer">A standalone interactive story engine</div>
+</div>
+
+<!-- ===================== GAME SCREEN ===================== -->
+<div class="screen" id="game-screen">
+  <div class="hud-bar">
+    <div class="hud-left">
+      <div class="hp-container">
+        <span class="hud-label">HP</span>
+        <div class="hp-bar-bg"><div class="hp-bar-fill healthy" id="hp-fill" style="width:100%"></div></div>
+        <span class="hp-text" id="hp-text">100/100</span>
+      </div>
+    </div>
+    <div class="hud-right">
+      <span class="hud-icon" id="inv-toggle" title="Inventory">🎒</span>
+      <span class="hud-icon" id="menu-btn" title="Menu">☰</span>
+    </div>
+  </div>
+
+  <div class="story-area" id="story-area">
+    <div class="story-text" id="story-text"></div>
+    <div class="choices" id="choices"></div>
+  </div>
+
+  <div class="inventory-panel" id="inv-panel">
+    <div class="inv-title">Inventory</div>
+    <div class="inv-items" id="inv-items"></div>
+  </div>
+</div>
+
+<!-- ===================== END SCREEN ===================== -->
+<div class="screen" id="end-screen">
+  <div class="end-title" id="end-title">THE END</div>
+  <div class="end-subtitle" id="end-subtitle"></div>
+  <div class="end-stats">
+    <h3>Adventure Summary</h3>
+    <div id="end-stats-content"></div>
+  </div>
+  <div class="end-actions">
+    <button class="btn btn-primary" id="restart-btn">Play Again</button>
+    <button class="btn" id="end-menu-btn">Main Menu</button>
+  </div>
+</div>
+
+<!-- ===================== SETTINGS OVERLAY ===================== -->
+<div class="settings-overlay" id="settings-overlay">
+  <div class="settings-box">
+    <h2>Settings</h2>
+    <div class="setting-row">
+      <span class="setting-label">Typewriter Effect</span>
+      <div class="toggle-switch on" id="toggle-typewriter" data-setting="typewriter"></div>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">Auto-save</span>
+      <div class="toggle-switch on" id="toggle-autosave" data-setting="autosave"></div>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">Sound Effects</span>
+      <div class="toggle-switch" id="toggle-sound" data-setting="sound"></div>
+    </div>
+    <button class="btn btn-small" id="settings-close" style="width:100%; margin-top:10px;">Close</button>
+  </div>
+</div>
+
+<!-- ===================== MENU OVERLAY ===================== -->
+<div class="settings-overlay" id="menu-overlay">
+  <div class="settings-box">
+    <h2>Paused</h2>
+    <button class="btn" id="menu-resume" style="width:100%; margin-bottom:10px;">Resume</button>
+    <button class="btn btn-small" id="menu-settings" style="width:100%; margin-bottom:10px;">Settings</button>
+    <button class="btn btn-danger btn-small" id="menu-restart" style="width:100%; margin-bottom:10px;">Restart Story</button>
+    <button class="btn btn-small" id="menu-quit" style="width:100%;">Quit to Main Menu</button>
+  </div>
+</div>
+
+<script>
+// ========================================================
+//  STORY DATA — Edit this to create your own adventure
+// ========================================================
+const STORY = {
+  title: "The Salvager's Choice",
+  author: "R. E. Suter",
+  startScene: "start",
+  maxHP: 100,
+  achievements: [
+    { id: "first_step", name: "First Steps", desc: "Begin your adventure" },
+    { id: "found_key", name: "Key Collector", desc: "Find the rusted key" },
+    { id: "survivor", name: "Survivor", desc: "Survive a dangerous encounter" },
+    { id: "true_ending", name: "The Right Choice", desc: "Reach the true ending" },
+    { id: "all_endings", name: "Completionist", desc: "Discover all endings" },
+    { id: "no_damage", name: "Untouchable", desc: "Finish the story without losing HP" },
+  ],
+  scenes: {
+
+    // ---- START ----
+    "start": {
+      text: `<p class="narration">The wasteland stretches in every direction — a cracked highway under a bruised sky, the bones of the old world scattered across the landscape like the remnants of a dream.</p>
+             <p class="narration">You are a Salvager. One of the few who ventures into the ruins, searching for anything of value: medicine, tools, batteries, sometimes even food that hasn't spoiled. Today, you've come to <span class="dialogue">Facility 7</span> — an abandoned research complex that the scavengers' network says hasn't been picked clean yet.</p>
+             <p class="thought">Three floors. Maybe more. Whatever's in there, it's been sitting for fifteen years.</p>
+             <p class="narration">The entrance is a heavy steel door, half-open, hanging from one hinge. Beyond it, darkness.</p>`,
+      onEnter: { flag: "entered_facility", achievement: "first_step" },
+      choices: [
+        { text: "Enter through the front door", goto: "foyer", hint: "The obvious path" },
+        { text: "Circle around to find another way in", goto: "side_entrance", hint: "Maybe there's a back entrance" },
+        { text: "Check the parking lot for supplies first", goto: "parking_lot", hint: "Scavenge before you go in" },
+      ]
+    },
+
+    // ---- PARKING LOT ----
+    "parking_lot": {
+      text: `<p class="narration">The parking lot is a graveyard of rusted vehicles, their tires long rotted away. Weeds push through the cracked asphalt with surprising determination.</p>
+             <p class="narration">You methodically check the cars — most have been stripped already. But in the trunk of a faded blue sedan, you find a <span class="item-get">rusted key</span> and a <span class="item-get">half-empty bottle of water</span>.</p>
+             <p class="narration">The facility entrance waits, patient as the grave.</p>`,
+      onEnter: { items: ["rusted key", "water bottle"], flags: { "found_key": true }, achievement: "found_key" },
+      choices: [
+        { text: "Enter through the front door", goto: "foyer" },
+        { text: "Circle around to the side entrance", goto: "side_entrance" },
+      ]
+    },
+
+    // ---- SIDE ENTRANCE ----
+    "side_entrance": {
+      text: `<p class="narration">You pick your way around the building through knee-high weeds. The side of the facility is featureless concrete, but you spot a ventilation grate near the ground that's been pried open — someone else tried this way before you.</p>
+             <p class="narration">The shaft is tight, dark, and smells of rust and old air. But it bypasses whatever's waiting in the lobby.</p>`,
+      choices: [
+        { text: "Crawl through the vent", goto: "vent_shaft", hint: "Tight squeeze" },
+        { text: "Go back to the front door", goto: "foyer" },
+      ]
+    },
+
+    // ---- VENT SHAFT ----
+    "vent_shaft": {
+      text: `<p class="narration">You squeeze into the vent. It's worse than you imagined — every inch of progress is a battle against tight metal and your own breathing. After what feels like an eternity, you drop into a narrow maintenance corridor.</p>
+             <p class="danger">Your arms are scraped and cut from the metal edges. You lose some health.</p>
+             <p class="narration">You're in a service hallway. To your left, a door marked <span class="dialogue">STAIRS</span>. To your right, the corridor continues into deeper darkness, with a faint humming sound coming from somewhere ahead.</p>`,
+      onEnter: { hp: -15 },
+      choices: [
+        { text: "Take the stairs down", goto: "stairwell" },
+        { text: "Follow the humming sound", goto: "generator_room" },
+      ]
+    },
+
+    // ---- FOYER ----
+    "foyer": {
+      text: `<p class="narration">The foyer was once impressive — marble floors, a reception desk, even a dead ficus tree still standing in its pot. Now it's dim, lit only by light filtering through cracked skylights.</p>
+             <p class="narration">A security gate blocks the main hallway. It's padlocked. The reception desk has been ransacked, drawers pulled out and dumped.</p>
+             <p class="narration">There's a door to your left marked <span class="dialogue">STAIRS</span>, and a hallway to the right that leads deeper into the building. Something moves in the shadows near the far end of the hall — a shape, low and deliberate.</p>`,
+      choices: [
+        { text: "Break the padlock with your salvage tool", goto: "foyer_broken", requires: { flag: "has_tool" }, hint: "You have a tool for this" },
+        { text: "Try to pick the padlock with the rusted key", goto: "foyer_unlocked", requires: { item: "rusted key" }, hint: "Worth a try" },
+        { text: "Take the stairs instead", goto: "stairwell" },
+        { text: "Approach the shape in the hallway", goto: "foyer_creature", hint: "Risky" },
+      ]
+    },
+
+    "foyer_broken": {
+      text: `<p class="narration">Your salvage tool makes short work of the rusted padlock. The gate swings open with a groan of protest. The main hallway stretches before you — a corridor of offices, most with their doors hanging open.</p>
+             <p class="narration">At the end of the hall, a reinforced door stands closed. A sign reads <span class="dialogue">LABORATORY — AUTHORIZED PERSONNEL ONLY</span>.</p>`,
+      onEnter: { flags: { "gate_open": true } },
+      choices: [
+        { text: "Search the offices for supplies", goto: "offices" },
+        { text: "Go straight to the laboratory door", goto: "lab_door" },
+        { text: "Take the stairs to the lower level", goto: "stairwell" },
+      ]
+    },
+
+    "foyer_unlocked": {
+      text: `<p class="narration">The rusted key doesn't fit perfectly, but you jiggle it and apply pressure. After a tense moment, the padlock clicks open. Sometimes salvaging teaches you patience.</p>
+             <p class="narration">The gate swings open. The main hallway stretches before you — offices on both sides, and at the far end, a reinforced door marked <span class="dialogue">LABORATORY</span>.</p>`,
+      onEnter: { flags: { "gate_open": true }, removeItems: ["rusted key"] },
+      choices: [
+        { text: "Search the offices for supplies", goto: "offices" },
+        { text: "Go straight to the laboratory door", goto: "lab_door" },
+        { text: "Take the stairs to the lower level", goto: "stairwell" },
+      ]
+    },
+
+    "foyer_creature": {
+      text: `<p class="narration">You move cautiously down the hallway, your footsteps deliberately quiet. As you get closer, the shape resolves into a <span class="danger">wild dog</span> — lean, feral, its ribs visible through matted fur. It's nosing at something on the floor.</p>
+             <p class="narration">It hasn't noticed you yet. You could slip past it to the offices beyond, or try to deal with it.</p>`,
+      choices: [
+        { text: "Sneak past to the offices", goto: "offices", hint: "Quiet and careful" },
+        { text: "Throw the water bottle to distract it", goto: "dog_distracted", requires: { item: "water bottle" } },
+        { text: "Fight the dog", goto: "dog_fight", hint: "Dangerous" },
+        { text: "Back away to the stairs", goto: "stairwell" },
+      ]
+    },
+
+    "dog_distracted": {
+      text: `<p class="narration">You lob the water bottle down the hallway. It clatters against the far wall, and the dog's head snaps toward the sound. It trots after it, leaving you a clear path.</p>
+             <p class="reward">You slip past safely.</p>
+             <p class="narration">You reach the offices. Most have been ransacked, but there might be something useful here. At the end of the hall, a reinforced door is marked <span class="dialogue">LABORATORY</span>.</p>`,
+      onEnter: { removeItems: ["water bottle"], flags: { "dog_avoided": true } },
+      choices: [
+        { text: "Search the offices", goto: "offices" },
+        { text: "Go to the laboratory door", goto: "lab_door" },
+      ]
+    },
+
+    "dog_fight": {
+      text: `<p class="danger">The dog senses you and whirls. It lunges with surprising speed, teeth bared.</p>
+             <p class="narration">You manage to grab a piece of rebar from the floor and swing it hard. The fight is ugly and brief. The dog yelps and retreats, limping into the shadows.</p>
+             <p class="danger">But not before it bites you. The wound is deep.</p>`,
+      onEnter: { hp: -30, flags: { "dog_fought": true }, achievement: "survivor" },
+      choices: [
+        { text: "Search the offices", goto: "offices" },
+        { text: "Go to the laboratory door", goto: "lab_door" },
+        { text: "Take the stairs to rest", goto: "stairwell" },
+      ]
+    },
+
+    // ---- OFFICES ----
+    "offices": {
+      text: `<p class="narration">You move through the offices systematically. Most have been stripped — filing cabinets emptied, desk drawers pulled out. But in a manager's office, you find a desk with a locked drawer.</p>
+             <p class="narration">There's also a <span class="item-get">first aid kit</span> on a shelf, its seal unbroken. And in a break room, a vending machine has been pried open, revealing a <span class="item-get">can of soup</span> and a <span class="item-get">soda can</span>.</p>`,
+      onEnter: { items: ["first aid kit", "canned soup", "soda can"] },
+      choices: [
+        { text: "Try to open the locked drawer", goto: "locked_drawer", requires: { item: "rusted key" }, hint: "Maybe the key works" },
+        { text: "Leave it and go to the laboratory door", goto: "lab_door" },
+        { text: "Head to the stairwell", goto: "stairwell" },
+      ]
+    },
+
+    "locked_drawer": {
+      text: `<p class="narration">The rusted key doesn't fit the desk drawer. But you jimmy it with your salvage tool, and the lock pops. Inside: a <span class="item-get">keycard</span> with a magnetic strip, and a handwritten note.</p>
+             <p class="dialogue">"If you're reading this, the lab below has what we left behind. Use the card. The code is 7-3-9. Don't let it fall into the wrong hands. — Dr. Vasquez"</p>`,
+      onEnter: { items: ["keycard"], flags: { "has_code": true, "code": "739" } },
+      choices: [
+        { text: "Head to the laboratory door", goto: "lab_door" },
+        { text: "Go to the stairwell", goto: "stairwell" },
+      ]
+    },
+
+    // ---- STAIRWELL ----
+    "stairwell": {
+      text: `<p class="narration">The stairwell is concrete and cold. Steps descend into darkness below, and a faint emergency light flickers on the lower landing, powered by something you can't see.</p>
+             <p class="narration">You can go down to the lower level, or go up to what appears to be a roof access. There's also a door here marked <span class="dialogue">MAINTENANCE</span>.</p>`,
+      choices: [
+        { text: "Descend to the lower level", goto: "lower_level" },
+        { text: "Go up to the roof", goto: "roof" },
+        { text: "Check the maintenance room", goto: "maintenance" },
+        { text: "Go back to the foyer", goto: "foyer", requires: { flagNot: "came_from_vent" } },
+      ]
+    },
+
+    // ---- ROOF ----
+    "roof": {
+      text: `<p class="narration">The roof offers a view of the entire facility grounds. From here, you can see the layout: the main building, a separate structure that might be a generator house, and a courtyard between them.</p>
+             <p class="narration">More importantly, you spot a <span class="item-get">salvage tool</span> — a pry bar with a hooked end — lying near a ventilation unit. Someone must have dropped it. And there's a <span class="item-get">rope</span> coiled near the edge, tied to a vent stack.</p>
+             <p class="narration">You could use the rope to rappel down to the courtyard, or take the stairs back down.</p>`,
+      onEnter: { items: ["salvage tool", "rope"], flags: { "has_tool": true } },
+      choices: [
+        { text: "Rappel down to the courtyard", goto: "courtyard", requires: { item: "rope" } },
+        { text: "Take the stairs back down", goto: "stairwell" },
+      ]
+    },
+
+    // ---- MAINTENANCE ----
+    "maintenance": {
+      text: `<p class="narration">The maintenance room is cramped but intact. Shelves line the walls with cleaning supplies, most long since degraded. But you find a <span class="item-get">flashlight</span> that still works, and a <span class="item-get">fire extinguisher</span>.</p>
+             <p class="narration">There's also a fuse box on the wall. Some of the breakers are labeled — one says <span class="dialogue">LAB POWER</span>.</p>`,
+      onEnter: { items: ["flashlight", "fire extinguisher"] },
+      choices: [
+        { text: "Flip the LAB POWER breaker", goto: "power_on", hint: "Restore power to the lab?" },
+        { text: "Leave it and go to the stairs", goto: "stairwell" },
+      ]
+    },
+
+    "power_on": {
+      text: `<p class="narration">You flip the breaker. Somewhere below, you hear the hum of machinery coming to life. Lights flicker on in the stairwell — fluorescent tubes, half of them dead, but enough to see by.</p>
+             <p class="reward">The facility is no longer dark. This could help — or it could attract attention.</p>`,
+      onEnter: { flags: { "power_restored": true } },
+      choices: [
+        { text: "Descend to the lower level", goto: "lower_level" },
+        { text: "Go to the roof", goto: "roof" },
+      ]
+    },
+
+    // ---- GENERATOR ROOM ----
+    "generator_room": {
+      text: `<p class="narration">The humming leads you to a room dominated by a diesel generator, surprisingly intact. It's running on fumes — the tank is nearly empty — but it's been providing power to something below.</p>
+             <p class="narration">There's a door here that leads to the lower level. And on a workbench, you spot a <span class="item-get">salvage tool</span> and a <span class="item-get">first aid kit</span>.</p>`,
+      onEnter: { items: ["salvage tool", "first aid kit"], flags: { "has_tool": true } },
+      choices: [
+        { text: "Continue to the lower level", goto: "lower_level" },
+        { text: "Go back to the vent shaft", goto: "vent_shaft" },
+      ]
+    },
+
+    // ---- COURTYARD ----
+    "courtyard": {
+      text: `<p class="narration">You rappel down the rope to the courtyard between the buildings. The air is still here, sheltered by the facility walls. Weeds have overtaken what was once a small garden.</p>
+             <p class="narration">A door leads directly to the lower level. But you also notice a collapsed section of wall — rubble that might hide something beneath it.</p>`,
+      choices: [
+        { text: "Enter the lower level", goto: "lower_level" },
+        { text: "Dig through the rubble", goto: "courtyard_rubble", hint: "What's under there?" },
+      ]
+    },
+
+    "courtyard_rubble": {
+      text: `<p class="narration">You clear rubble for twenty minutes, sweat dripping despite the cool air. Underneath, you find a sealed metal case. Inside: <span class="item-get">morphine ampules</span> — a powerful painkiller that could save a life in an emergency — and a <span class="item-get">keycard</span>.</p>
+             <p class="dialogue">"Dr. Vasquez — the samples are in Lab 3. Use the card. Code is 7-3-9. — K. Marston"</p>
+             <p class="narration">A note taped inside the case lid. Another clue to what's down there.</p>`,
+      onEnter: { items: ["morphine", "keycard"], flags: { "has_code": true } },
+      choices: [
+        { text: "Enter the lower level", goto: "lower_level" },
+      ]
+    },
+
+    // ---- LOWER LEVEL ----
+    "lower_level": {
+      text: `<p class="narration">The lower level is a different world. The walls are clinical white, the floors linoleum. Emergency lighting casts everything in a dim amber glow — unless you restored the power, in which case the fluorescent lights are buzzing overhead.</p>
+             <p class="narration">Three doors line the corridor. <span class="dialogue">LAB 1</span> is open. <span class="dialogue">LAB 2</span> is locked. <span class="dialogue">LAB 3</span> has a keycard reader next to it, blinking red.</p>
+             <p class="narration">There's also a door at the far end marked <span class="dialogue">DECONTAMINATION</span>.</p>`,
+      choices: [
+        { text: "Enter Lab 1", goto: "lab_1" },
+        { text: "Try to open Lab 2", goto: "lab_2_locked" },
+        { text: "Use the keycard on Lab 3", goto: "lab_3_entry", requires: { item: "keycard" }, hint: "You have a keycard" },
+        { text: "Go to the decontamination room", goto: "decon" },
+        { text: "Take the stairs back up", goto: "stairwell" },
+      ]
+    },
+
+    // ---- LAB 1 ----
+    "lab_1": {
+      text: `<p class="narration">Lab 1 is a mess. Shattered glass covers the floor, equipment overturned. It looks like someone ransacked it — or something broke out.</p>
+             <p class="narration">But in a cabinet that's still intact, you find <span class="item-get">antibiotics</span> and a <span class="item-get">bandage roll</span>. A desk drawer contains a journal.</p>
+             <p class="dialogue">"Subject 7 has shown remarkable response to the compound. Motor function restored to 94%. But the behavioral changes... they're not reversible. — Dr. Vasquez, Day 42"</p>`,
+      onEnter: { items: ["antibiotics", "bandages"] },
+      choices: [
+        { text: "Return to the corridor", goto: "lower_level" },
+      ]
+    },
+
+    // ---- LAB 2 ----
+    "lab_2_locked": {
+      text: `<p class="narration">Lab 2's door is sealed tight. There's no keycard reader — just a simple deadbolt. Without a tool to pry it open, you're not getting in.</p>`,
+      choices: [
+        { text: "Pry the door open with your salvage tool", goto: "lab_2_open", requires: { item: "salvage tool" } },
+        { text: "Return to the corridor", goto: "lower_level" },
+      ]
+    },
+
+    "lab_2_open": {
+      text: `<p class="narration">You wedge the salvage tool into the door frame and lever it open. The deadbolt gives with a snap.</p>
+             <p class="narration">Lab 2 is pristine. Untouched. Whatever happened here, this room was sealed before it reached it. On a table in the center: a <span class="item-get">vial of blue liquid</span> in a containment case, and a folder labeled <span class="dialogue">PROJECT RESTORATION</span>.</p>
+             <p class="narration">The folder contains research notes. The blue liquid is an experimental compound — designed to repair nerve damage. The notes say it was synthesized for a patient with severe CIDP, a neurological condition. The compound showed promise but was never tested beyond animal trials before the facility was abandoned.</p>
+             <p class="thought">This... this could help people. If it still works.</p>`,
+      onEnter: { items: ["blue vial"], flags: { "found_compound": true } },
+      choices: [
+        { text: "Take the compound and the research notes", goto: "lower_level", onChoose: { flags: { "took_research": true } } },
+        { text: "Leave the compound — it's not yours to take", goto: "lower_level" },
+      ]
+    },
+
+    // ---- LAB 3 ----
+    "lab_3_entry": {
+      text: `<p class="narration">You swipe the keycard. The reader blinks green, and the door hisses open on pneumatic seals.</p>
+             <p class="narration">Lab 3 is the largest of the three. It's been converted into something beyond a research lab — there's a cot, supplies, signs of someone living here. Recently. A journal sits on a desk next to a radio setup.</p>
+             <p class="dialogue">"I stayed behind when everyone else left. The compound in Lab 2 — it's the only thing keeping me going. CIDP took my legs three years ago. This gave them back. But the changes... I'm not sure I'm still me. If someone finds this, the compound works, but it needs refinement. Don't let them destroy it. — Vasquez"</p>
+             <p class="narration">There's a body in the corner, wrapped in a blanket. Peaceful. The journal's last entry is dated six months ago.</p>`,
+      onEnter: { flags: { "found_vasquez": true } },
+      choices: [
+        { text: "Take the radio and journal", goto: "lab_3_radio", hint: "There might be people on the other end" },
+        { text: "Search the lab for supplies", goto: "lab_3_search" },
+        { text: "Leave the lab", goto: "lower_level" },
+      ]
+    },
+
+    "lab_3_radio": {
+      text: `<p class="narration">You turn on the radio. Static. You turn the dial, searching. And then — a voice.</p>
+             <p class="dialogue">"...anyone receiving? This is Settlement West, frequency 4.7. We have medical personnel. If anyone has found pharmaceutical compounds in the eastern facilities, we desperately need them. Please respond."</p>
+             <p class="narration">They're looking for exactly what you found. The compound. The research. This could save lives — or it could be a trap.</p>`,
+      onEnter: { flags: { "heard_radio": true } },
+      choices: [
+        { text: "Respond and tell them you have the compound", goto: "ending_bring_compound", requires: { item: "blue vial" } },
+        { text: "Respond and say you found research notes only", goto: "ending_research_only", requires: { flag: "took_research" } },
+        { text: "Don't respond — too risky", goto: "lab_3_search" },
+      ]
+    },
+
+    "lab_3_search": {
+      text: `<p class="narration">You search the lab. Vasquez had supplies: <span class="item-get">morphine</span>, <span class="item-get">antibiotics</span>, and a <span class="item-get">journal of research notes</span> detailing the compound's synthesis process.</p>
+             <p class="narration">The compound in Lab 2, the radio signal, the research notes — all pieces of a puzzle Vasquez died trying to solve. The question is what you do with them.</p>`,
+      onEnter: { items: ["morphine", "antibiotics", "research notes"], flags: { "took_research": true } },
+      choices: [
+        { text: "Use the radio to contact Settlement West", goto: "lab_3_radio" },
+        { text: "Leave the facility with everything you've found", goto: "ending_leave" },
+        { text: "Return to the corridor", goto: "lower_level" },
+      ]
+    },
+
+    // ---- DECON ----
+    "decon": {
+      text: `<p class="narration">The decontamination room is a sealed chamber with a shower system. It's also where the facility's final logs are stored — a computer terminal with limited power.</p>
+             <p class="narration">The screen flickers on. The last entry:</p>
+             <p class="dialogue">"FACILITY 7 — FINAL LOG. Evacuation ordered. Compound samples in Lab 2. Vasquez refused to leave. If found, deliver compounds to Settlement West. Authorization code: 7-3-9."</p>
+             <p class="narration">There's also a decontamination shower that still works. If you've been exposed to anything, this would clean it off.</p>`,
+      choices: [
+        { text: "Use the decontamination shower", goto: "decon_clean", hint: "Clean yourself up" },
+        { text: "Return to the corridor", goto: "lower_level" },
+      ]
+    },
+
+    "decon_clean": {
+      text: `<p class="reward">The shower activates, spraying you with a chemical mist that stings but cleans. You feel refreshed. You gain some health back.</p>
+             <p class="narration">You step out, dripping but decontaminated. Whatever was in the air of this facility, it's off you now.</p>`,
+      onEnter: { hp: 20 },
+      choices: [
+        { text: "Return to the corridor", goto: "lower_level" },
+      ]
+    },
+
+    // ===================== ENDINGS =====================
+
+    "ending_bring_compound": {
+      text: `<p class="narration">You key the radio and respond. Your voice sounds strange in the silence of the lab.</p>
+             <p class="dialogue">"This is a Salvager at Facility 7. I have the compound. And the research notes."</p>
+             <p class="narration">There's a pause. Then the voice comes back, thick with emotion.</p>
+             <p class="dialogue">"Thank God. We have people here — CIDP patients, MS patients — who need this. Can you bring it? We're three days west. We'll send someone to meet you halfway."</p>
+             <p class="narration">You agree. You gather the compound, the notes, the supplies. You leave Vasquez's body at peace in the lab they died protecting.</p>
+             <p class="narration">Three days later, you hand the case to a doctor who weeps when she sees it. The compound goes into trials. Within a year, it's refined. Within two, it's saving lives.</p>
+             <p class="narration">You never tell anyone about the Salvager who found it. That's not why you did it.</p>`,
+      ending: "victory",
+      endingTitle: "THE SALVAGER'S LEGACY",
+      endingSubtitle: "You found what was lost, and you gave it to those who needed it most.",
+      onEnter: { achievement: "true_ending" },
+    },
+
+    "ending_research_only": {
+      text: `<p class="narration">You key the radio.</p>
+             <p class="dialogue">"This is a Salvager at Facility 7. I have Dr. Vasquez's research notes. The compound — I left it. I wasn't sure if it was safe to move."</p>
+             <p class="narration">The voice on the other end is understanding. They send a team to retrieve it. You guide them to the facility, show them the labs, the notes, Vasquez's final journal.</p>
+             <p class="narration">You're paid fairly for the find — more than you've made in months. The team from Settlement West takes the compound and the research. They tell you it could change everything for people with nerve damage.</p>
+             <p class="narration">You walk away richer, and something in your chest feels lighter than it has in years.</p>`,
+      ending: "neutral",
+      endingTitle: "A FAIR TRADE",
+      endingSubtitle: "You didn't take the risk, but you opened the door for those who would.",
+    },
+
+    "ending_leave": {
+      text: `<p class="narration">You don't respond to the radio. You pack everything — the compound, the notes, the supplies — into your bag. Salvager's prerogative. You found it. It's yours.</p>
+             <p class="narration">You walk out of Facility 7 into the afternoon sun, heavier than when you came in. The compound sits in your bag, worth more than anything you've ever salvaged.</p>
+             <p class="narration">Maybe you'll sell it. Maybe you'll keep it. Maybe someday you'll find someone who needs it. Or maybe it'll sit on a shelf, a prize from a good day's work.</p>
+             <p class="narration">The wasteland stretches before you. Another facility, another day. That's the Salvager's life.</p>`,
+      ending: "neutral",
+      endingTitle: "THE SALVAGER'S WAY",
+      endingSubtitle: "You took what you found. What happens next is up to you.",
+    },
+
+    // ---- DEATH ENDINGS ----
+    "ending_dog_death": {
+      text: `<p class="danger">The dog is faster than you expected. It lunges, and this time there's no rebar to grab. The last thing you see is the bruised sky through the skylight, and the last thing you think is that you should have been more careful.</p>
+             <p class="narration">Facility 7 claims another Salvager. Your bag sits in the foyer, unclaimed, until the next one comes along.</p>`,
+      ending: "defeat",
+      endingTitle: "CLAIMED BY THE WASTES",
+      endingSubtitle: "The facility keeps its secrets. You were not the first, and you won't be the last.",
+    },
+
+    "ending_no_hp": {
+      text: `<p class="danger">Your body gives out. The injuries, the exhaustion, the stale air — it all catches up at once. You slide down the wall and sit on the cold floor.</p>
+             <p class="narration">The facility is quiet around you. The compound, the research, the radio — none of it matters now. You close your eyes, and the darkness takes you.</p>
+             <p class="narration">Somewhere, a radio crackles with a voice asking for help. No one answers.</p>`,
+      ending: "defeat",
+      endingTitle: "THE DARKNESS TAKES YOU",
+      endingSubtitle: "You gave everything you had. It wasn't quite enough.",
+    },
+
+    "ending_power_trap": {
+      text: `<p class="danger">The lights coming on was a mistake. The brightness attracts something from the lower levels — something that has been living in the dark for fifteen years, that has learned to hate the light and everything that makes it.</p>
+             <p class="narration">You hear it before you see it. A sound like dragging, wet and heavy. Then it's in the doorway, and you understand why they evacuated.</p>
+             <p class="narration">You don't have time to scream.</p>`,
+      ending: "defeat",
+      endingTitle: "WHAT LIVES IN THE DARK",
+      endingSubtitle: "Some doors should stay closed. Some lights should stay off.",
+    },
+  }
+};
+
+// ========================================================
+//  GAME ENGINE
+// ========================================================
+const Engine = {
+  // --- State ---
+  player: { hp: 100, maxHP: 100, items: [], flags: {} },
+  currentScene: null,
+  sceneHistory: [],
+  startedAt: 0,
+  settings: { typewriter: true, autosave: true, sound: false },
+  achievements: new Set(),
+  endingsFound: new Set(),
+  noDamageRun: true,
+  isTyping: false,
+  typeTimer: null,
+
+  // --- Audio (simple beeps via Web Audio) ---
+  audioCtx: null,
+  playSound(freq, duration) {
+    if (!this.settings.sound) return;
+    try {
+      if (!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+      osc.connect(gain); gain.connect(this.audioCtx.destination);
+      osc.frequency.value = freq; osc.type = 'sine';
+      gain.gain.setValueAtTime(0.15, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
+      osc.start(); osc.stop(this.audioCtx.currentTime + duration);
+    } catch(e) {}
+  },
+
+  // --- Init ---
+  init() {
+    this.player = { hp: STORY.maxHP, maxHP: STORY.maxHP, items: [], flags: {} };
+    this.currentScene = STORY.startScene;
+    this.sceneHistory = [];
+    this.startedAt = Date.now();
+    this.noDamageRun = true;
+    this.loadSettings();
+    this.loadMeta();
+    this.bindUI();
+    this.checkSave();
+  },
+
+  // --- UI Binding ---
+  bindUI() {
+    document.getElementById('start-btn').onclick = () => this.startNewGame();
+    document.getElementById('continue-btn').onclick = () => this.loadGame();
+    document.getElementById('settings-btn').onclick = () => this.showSettings(true);
+    document.getElementById('settings-close').onclick = () => this.showSettings(false);
+    document.getElementById('inv-toggle').onclick = () => this.toggleInventory();
+    document.getElementById('menu-btn').onclick = () => this.showMenu(true);
+    document.getElementById('menu-resume').onclick = () => this.showMenu(false);
+    document.getElementById('menu-settings').onclick = () => { this.showMenu(false); this.showSettings(true); };
+    document.getElementById('menu-restart').onclick = () => { this.showMenu(false); this.confirmRestart(); };
+    document.getElementById('menu-quit').onclick = () => { this.showMenu(false); this.quitToMenu(); };
+    document.getElementById('restart-btn').onclick = () => this.startNewGame();
+    document.getElementById('end-menu-btn').onclick = () => this.quitToMenu();
+
+    // Settings toggles
+    document.querySelectorAll('.toggle-switch').forEach(t => {
+      t.onclick = () => {
+        t.classList.toggle('on');
+        const setting = t.dataset.setting;
+        this.settings[setting] = t.classList.contains('on');
+        this.saveSettings();
+      };
+    });
+  },
+
+  // --- Settings ---
+  showSettings(show) {
+    document.getElementById('settings-overlay').classList.toggle('visible', show);
+  },
+  showMenu(show) {
+    document.getElementById('menu-overlay').classList.toggle('visible', show);
+  },
+  loadSettings() {
+    try {
+      const s = localStorage.getItem('if_settings');
+      if (s) {
+        this.settings = { ...this.settings, ...JSON.parse(s) };
+        document.querySelectorAll('.toggle-switch').forEach(t => {
+          const key = t.dataset.setting;
+          t.classList.toggle('on', this.settings[key]);
+        });
+      }
+    } catch(e) {}
+  },
+  saveSettings() {
+    try { localStorage.setItem('if_settings', JSON.stringify(this.settings)); } catch(e) {}
+  },
+
+  // --- Meta (achievements, endings) ---
+  loadMeta() {
+    try {
+      const m = localStorage.getItem('if_meta');
+      if (m) {
+        const data = JSON.parse(m);
+        this.achievements = new Set(data.achievements || []);
+        this.endingsFound = new Set(data.endings || []);
+      }
+    } catch(e) {}
+  },
+  saveMeta() {
+    try {
+      localStorage.setItem('if_meta', JSON.stringify({
+        achievements: [...this.achievements],
+        endings: [...this.endingsFound],
+      }));
+    } catch(e) {}
+  },
+
+  // --- Save/Load ---
+  hasSave() {
+    return !!localStorage.getItem('if_save');
+  },
+  checkSave() {
+    if (this.hasSave()) {
+      document.getElementById('continue-btn').style.display = '';
+    }
+  },
+  saveGame() {
+    if (!this.settings.autosave) return;
+    try {
+      localStorage.setItem('if_save', JSON.stringify({
+        player: this.player,
+        currentScene: this.currentScene,
+        sceneHistory: this.sceneHistory,
+        startedAt: this.startedAt,
+        noDamageRun: this.noDamageRun,
+      }));
+      this.checkSave();
+    } catch(e) {}
+  },
+  loadGame() {
+    try {
+      const data = JSON.parse(localStorage.getItem('if_save'));
+      this.player = data.player;
+      this.currentScene = data.currentScene;
+      this.sceneHistory = data.sceneHistory || [];
+      this.startedAt = data.startedAt || Date.now();
+      this.noDamageRun = data.noDamageRun !== false;
+      this.showScreen('game-screen');
+      this.renderScene();
+    } catch(e) {
+      alert('Save file corrupted. Starting a new game.');
+      this.startNewGame();
+    }
+  },
+  deleteSave() {
+    localStorage.removeItem('if_save');
+    document.getElementById('continue-btn').style.display = 'none';
+  },
+
+  // --- Screen Management ---
+  showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  },
+
+  // --- Start Game ---
+  startNewGame() {
+    this.player = { hp: STORY.maxHP, maxHP: STORY.maxHP, items: [], flags: {} };
+    this.currentScene = STORY.startScene;
+    this.sceneHistory = [];
+    this.startedAt = Date.now();
+    this.noDamageRun = true;
+    this.deleteSave();
+    this.showScreen('game-screen');
+    this.renderScene();
+  },
+
+  confirmRestart() {
+    if (confirm('Restart the story? Your current progress will be lost.')) {
+      this.startNewGame();
+    }
+  },
+
+  quitToMenu() {
+    this.saveGame();
+    this.showScreen('title-screen');
+    this.checkSave();
+  },
+
+  // --- Render Scene ---
+  renderScene() {
+    const scene = STORY.scenes[this.currentScene];
+    if (!scene) {
+      console.error('Scene not found:', this.currentScene);
+      return;
+    }
+
+    // Process onEnter effects
+    if (scene.onEnter) this.applyEffects(scene.onEnter);
+
+    // Check for death
+    if (this.player.hp <= 0) {
+      this.gotoScene('ending_no_hp');
+      return;
+    }
+
+    // Update HUD
+    this.updateHUD();
+
+    // Save game
+    this.saveGame();
+
+    // Render text
+    const textEl = document.getElementById('story-text');
+    const choicesEl = document.getElementById('choices');
+
+    if (this.settings.typewriter) {
+      this.typewriter(scene.text, textEl, () => {
+        this.renderChoices(scene, choicesEl);
+      });
+    } else {
+      textEl.innerHTML = scene.text;
+      this.renderChoices(scene, choicesEl);
+    }
+
+    // Check for ending
+    if (scene.ending) {
+      this.handleEnding(scene);
+    }
+
+    // Scroll to top
+    document.getElementById('story-area').scrollTop = 0;
+  },
+
+  // --- Typewriter Effect ---
+  typewriter(html, el, callback) {
+    if (this.typeTimer) clearTimeout(this.typeTimer);
+    this.isTyping = true;
+
+    // Parse HTML to get text content with tags
+    // We'll reveal character by character, preserving tags
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    const fullText = tempDiv.textContent || tempDiv.innerText;
+
+    // Simple approach: reveal the HTML progressively by character
+    // We need to handle HTML tags carefully
+    let i = 0;
+    let displayed = '';
+    const chars = [];
+
+    // Extract characters while tracking tag boundaries
+    let inTag = false;
+    let tagBuffer = '';
+    for (const ch of html) {
+      if (ch === '<') { inTag = true; tagBuffer = ch; }
+      else if (ch === '>') { tagBuffer += ch; chars.push({ tag: true, content: tagBuffer }); inTag = false; tagBuffer = ''; }
+      else if (inTag) { tagBuffer += ch; }
+      else { chars.push({ tag: false, content: ch }); }
+    }
+
+    let idx = 0;
+    const speed = 12; // ms per char
+
+    const tick = () => {
+      if (idx >= chars.length) {
+        el.innerHTML = html;
+        this.isTyping = false;
+        if (callback) callback();
+        return;
+      }
+      // Add several chars per tick for speed
+      let chunk = '';
+      for (let j = 0; j < 2 && idx < chars.length; j++, idx++) {
+        chunk += chars[idx].content;
+      }
+      // Build partial HTML
+      let partial = '';
+      let openTags = [];
+      for (let k = 0; k <= idx; k++) {
+        if (chars[k].tag) {
+          partial += chars[k].content;
+          if (chars[k].content.startsWith('</')) {
+            // closing tag
+          }
+        } else {
+          partial += chars[k].content;
+        }
+      }
+      // Close any open tags for rendering
+      el.innerHTML = partial;
+      this.typeTimer = setTimeout(tick, speed);
+    };
+    tick();
+  },
+
+  // --- Render Choices ---
+  renderChoices(scene, el) {
+    el.innerHTML = '';
+    if (!scene.choices || scene.ending) return;
+
+    scene.choices.forEach((choice, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+
+      // Check requirements
+      const reqMet = this.checkRequirements(choice.requires);
+      if (!reqMet) {
+        btn.classList.add('locked');
+        btn.disabled = true;
+      }
+
+      // Build label
+      let label = choice.text;
+      if (choice.hint) {
+        label += `<span class="choice-hint">${choice.hint}</span>`;
+      }
+      btn.innerHTML = label;
+
+      btn.onclick = () => {
+        if (btn.disabled) return;
+        this.playSound(440, 0.08);
+
+        // Apply onChoose effects
+        if (choice.onChoose) this.applyEffects(choice.onChoose);
+
+        // Track history
+        this.sceneHistory.push(this.currentScene);
+
+        // Navigate
+        this.gotoScene(choice.goto);
+      };
+
+      el.appendChild(btn);
+    });
+  },
+
+  // --- Requirements Check ---
+  checkRequirements(req) {
+    if (!req) return true;
+    // Check item requirement
+    if (req.item && !this.player.items.includes(req.item)) return false;
+    // Check flag requirement
+    if (req.flag && !this.player.flags[req.flag]) return false;
+    // Check flagNot (flag must NOT be set)
+    if (req.flagNot && this.player.flags[req.flagNot]) return false;
+    // Check hp requirement
+    if (req.hp && this.player.hp < req.hp) return false;
+    return true;
+  },
+
+  // --- Apply Effects ---
+  applyEffects(effects) {
+    const notifs = [];
+    if (effects.hp !== undefined) {
+      this.player.hp += effects.hp;
+      if (effects.hp < 0) {
+        this.noDamageRun = false;
+        notifs.push({ class: 'hp-dmg', text: `${effects.hp} HP` });
+        this.playSound(200, 0.15);
+      } else if (effects.hp > 0) {
+        notifs.push({ class: 'hp-heal', text: `+${effects.hp} HP` });
+        this.playSound(600, 0.1);
+      }
+      this.player.hp = Math.max(0, Math.min(this.player.maxHP, this.player.hp));
+    }
+    if (effects.items) {
+      effects.items.forEach(item => {
+        if (!this.player.items.includes(item)) {
+          this.player.items.push(item);
+          notifs.push({ class: 'item-add', text: `+ ${item}` });
+        }
+      });
+    }
+    if (effects.removeItems) {
+      effects.removeItems.forEach(item => {
+        const idx = this.player.items.indexOf(item);
+        if (idx > -1) {
+          this.player.items.splice(idx, 1);
+          notifs.push({ class: 'item-remove', text: `- ${item}` });
+        }
+      });
+    }
+    if (effects.flags) {
+      Object.keys(effects.flags).forEach(k => {
+        this.player.flags[k] = effects.flags[k];
+        notifs.push({ class: 'flag-set', text: `★ ${k.replace(/_/g, ' ')}` });
+      });
+    }
+    if (effects.flag && !effects.flags) {
+      this.player.flags[effects.flag] = true;
+      notifs.push({ class: 'flag-set', text: `★ ${effects.flag.replace(/_/g, ' ')}` });
+    }
+    if (effects.achievement) {
+      this.unlockAchievement(effects.achievement);
+    }
+    // Display notifications (append to story text)
+    if (notifs.length > 0) {
+      setTimeout(() => this.showNotifs(notifs), 500);
+    }
+  },
+
+  showNotifs(notifs) {
+    const textEl = document.getElementById('story-text');
+    const notifDiv = document.createElement('div');
+    notifDiv.style.marginTop = '12px';
+    notifs.forEach(n => {
+      const span = document.createElement('span');
+      span.className = 'effect-notif ' + n.class;
+      span.textContent = n.text;
+      notifDiv.appendChild(span);
+    });
+    textEl.appendChild(notifDiv);
+  },
+
+  // --- Navigate ---
+  gotoScene(sceneId) {
+    this.currentScene = sceneId;
+    this.renderScene();
+  },
+
+  // --- HUD Update ---
+  updateHUD() {
+    const fill = document.getElementById('hp-fill');
+    const text = document.getElementById('hp-text');
+    const pct = (this.player.hp / this.player.maxHP) * 100;
+    fill.style.width = pct + '%';
+    text.textContent = `${this.player.hp}/${this.player.maxHP}`;
+
+    fill.className = 'hp-bar-fill';
+    if (pct > 60) fill.classList.add('healthy');
+    else if (pct > 30) fill.classList.add('wounded');
+    else fill.classList.add('critical');
+  },
+
+  // --- Inventory ---
+  toggleInventory() {
+    const panel = document.getElementById('inv-panel');
+    const itemsEl = document.getElementById('inv-items');
+
+    if (this.player.items.length === 0) {
+      itemsEl.innerHTML = '<span class="inv-empty">Your bag is empty.</span>';
+    } else {
+      itemsEl.innerHTML = this.player.items.map(i => `<span class="inv-item">${i}</span>`).join('');
+    }
+    panel.classList.toggle('visible');
+  },
+
+  // --- Endings ---
+  handleEnding(scene) {
+    // Track ending
+    if (scene.ending) {
+      this.endingsFound.add(scene.endingTitle || scene.ending);
+      this.saveMeta();
+
+      // Check completionist
+      if (this.endingsFound.size >= 4) {
+        this.unlockAchievement('all_endings');
+      }
+
+      // Check no damage
+      if (this.noDamageRun && scene.ending === 'victory') {
+        this.unlockAchievement('no_damage');
+      }
+    }
+
+    // Show end screen after delay
+    setTimeout(() => {
+      this.showEndScreen(scene);
+    }, 3000);
+  },
+
+  showEndScreen(scene) {
+    this.deleteSave();
+    this.showScreen('end-screen');
+
+    const titleEl = document.getElementById('end-title');
+    const subEl = document.getElementById('end-subtitle');
+    const statsEl = document.getElementById('end-stats-content');
+
+    titleEl.textContent = scene.endingTitle || 'THE END';
+    titleEl.className = 'end-title ' + (scene.ending || 'neutral');
+    subEl.textContent = scene.endingSubtitle || '';
+
+    const time = Math.floor((Date.now() - this.startedAt) / 1000);
+    const mins = Math.floor(time / 60);
+    const secs = time % 60;
+    const scenesVisited = this.sceneHistory.length + 1;
+    const itemsCollected = this.player.items.length;
+
+    statsEl.innerHTML = `
+      <div class="end-stat-row"><span class="end-stat-label">Scenes Explored</span><span class="end-stat-value">${scenesVisited}</span></div>
+      <div class="end-stat-row"><span class="end-stat-label">Items Collected</span><span class="end-stat-value">${itemsCollected}</span></div>
+      <div class="end-stat-row"><span class="end-stat-label">Time Played</span><span class="end-stat-value">${mins}m ${secs}s</span></div>
+      <div class="end-stat-row"><span class="end-stat-label">Ending Type</span><span class="end-stat-value">${scene.ending || 'neutral'}</span></div>
+      <div class="end-stat-row"><span class="end-stat-label">Endings Found</span><span class="end-stat-value">${this.endingsFound.size}/4</span></div>
+    `;
+  },
+
+  // --- Achievements ---
+  unlockAchievement(id) {
+    if (this.achievements.has(id)) return;
+    this.achievements.add(id);
+    this.saveMeta();
+
+    const ach = STORY.achievements.find(a => a.id === id);
+    if (ach) {
+      this.showAchToast(ach);
+      this.playSound(880, 0.2);
+    }
+  },
+
+  showAchToast(ach) {
+    const toast = document.createElement('div');
+    toast.className = 'ach-toast';
+    toast.innerHTML = `<div class="ach-label">★ Achievement Unlocked</div><div class="ach-name">${ach.name}</div>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  },
+};
+
+// --- Boot ---
+Engine.init();
+</script>
+</body>
+</html>
