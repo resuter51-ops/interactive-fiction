@@ -276,7 +276,7 @@ body {
 
   <div class="story-area" id="story-area">
     <div class="story-text" id="story-text"></div>
-    <div class="choices" id="choices"></div>
+    <div class="choices" id="choices"></div>\n    <div id="debug-output" style="color:yellow;font-size:12px;padding:10px;font-family:monospace;"></div>
   </div>
 
   <div class="inventory-panel" id="inv-panel">
@@ -929,7 +929,9 @@ const Engine = {
     }
 
     // Process onEnter effects
-    if (scene.onEnter) this.applyEffects(scene.onEnter);
+    try {
+      if (scene.onEnter) this.applyEffects(scene.onEnter);
+    } catch(e) { this.debugError('onEnter: ' + e.message); }
 
     // Check for death
     if (this.player.hp <= 0) {
@@ -938,18 +940,22 @@ const Engine = {
     }
 
     // Update HUD
-    this.updateHUD();
+    try { this.updateHUD(); } catch(e) { this.debugError('updateHUD: ' + e.message); }
 
     // Save game
-    this.saveGame();
+    try { this.saveGame(); } catch(e) { this.debugError('saveGame: ' + e.message); }
 
     // Render text
     const textEl = document.getElementById('story-text');
     const choicesEl = document.getElementById('choices');
 
     // Render text and choices immediately
-    textEl.innerHTML = scene.text;
-    this.renderChoices(scene, choicesEl);
+    try {
+      textEl.innerHTML = scene.text;
+      this.debugLog('About to render choices. scene.choices = ' + JSON.stringify(scene.choices ? scene.choices.length : 'none'));
+      this.renderChoices(scene, choicesEl);
+      this.debugLog('Choices rendered. el.children = ' + choicesEl.children.length);
+    } catch(e) { this.debugError('render: ' + e.message + ' stack: ' + e.stack); }
 
     // Check for ending
     if (scene.ending) {
@@ -1217,6 +1223,16 @@ const Engine = {
     toast.innerHTML = `<div class="ach-label">★ Achievement Unlocked</div><div class="ach-name">${ach.name}</div>`;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
+  },
+
+  debugLog(msg) {
+    const dbg = document.getElementById('debug-output');
+    if (dbg) dbg.innerHTML += '<div>' + msg + '</div>';
+  },
+
+  debugError(msg) {
+    const dbg = document.getElementById('debug-output');
+    if (dbg) dbg.innerHTML += '<div style="color:red">ERROR: ' + msg + '</div>';
   },
 };
 
