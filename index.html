@@ -947,16 +947,9 @@ const Engine = {
     const textEl = document.getElementById('story-text');
     const choicesEl = document.getElementById('choices');
 
-    // Always render choices, with typewriter as a visual effect on top
+    // Render text and choices immediately
     textEl.innerHTML = scene.text;
     this.renderChoices(scene, choicesEl);
-    
-    if (this.settings.typewriter && scene.text) {
-      // Re-run typewriter effect but choices are already in DOM
-      this.typewriter(scene.text, textEl, () => {
-        // Choices already rendered, just restore formatted text
-      });
-    }
 
     // Check for ending
     if (scene.ending) {
