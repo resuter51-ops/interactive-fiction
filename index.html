@@ -198,6 +198,14 @@ body {
 .end-stat-label { color: var(--text-dim); }
 .end-stat-value { color: var(--accent-gold); }
 .end-actions { display: flex; flex-direction: column; gap: 12px; width: 280px; }
+.share-toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--bg-panel-light); border: 1px solid var(--accent-gold-dim);
+  color: var(--accent-gold); padding: 12px 24px; border-radius: 4px;
+  font-size: 0.85em; opacity: 0; pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s; z-index: 999;
+}
+.share-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* FADE ANIMATION */
 .fade-in { animation: fadeIn 0.6s ease; }
@@ -295,8 +303,10 @@ body {
   </div>
   <div class="end-actions">
     <button class="btn btn-primary" id="restart-btn">Play Again</button>
+    <button class="btn" id="share-btn">Share Your Ending</button>
     <button class="btn" id="end-menu-btn">Main Menu</button>
   </div>
+  <div id="share-toast" class="share-toast"></div>
 </div>
 
 <!-- ===================== SETTINGS OVERLAY ===================== -->
@@ -793,6 +803,7 @@ const Engine = {
     document.getElementById('menu-quit').onclick = () => { this.showMenu(false); this.quitToMenu(); };
     document.getElementById('restart-btn').onclick = () => this.startNewGame();
     document.getElementById('end-menu-btn').onclick = () => this.quitToMenu();
+    document.getElementById('share-btn').onclick = () => this.shareEnding();
 
     // Settings toggles
     document.querySelectorAll('.toggle-switch').forEach(t => {
@@ -1200,6 +1211,194 @@ const Engine = {
       <div class="end-stat-row"><span class="end-stat-label">Ending Type</span><span class="end-stat-value">${scene.ending || 'neutral'}</span></div>
       <div class="end-stat-row"><span class="end-stat-label">Endings Found</span><span class="end-stat-value">${this.endingsFound.size}/4</span></div>
     `;
+
+    // Store ending info for the share feature
+    this.currentEndingData = {
+      title: scene.endingTitle || 'THE END',
+      subtitle: scene.endingSubtitle || '',
+      type: scene.ending || 'neutral',
+      scenesVisited,
+      itemsCollected,
+      mins,
+      secs,
+      achievementCount: this.achievements.size,
+      endingsFound: this.endingsFound.size,
+    };
+  },
+
+  // --- Share Your Ending ---
+  async shareEnding() {
+    const d = this.currentEndingData;
+    if (!d) return;
+
+    const gameUrl = window.location.origin + window.location.pathname;
+    const shareText = `I just finished "${STORY.title}" and got the ending: ${d.title}!\n"${d.subtitle}"\n\n${d.achievementCount} achievements unlocked, ${d.itemsCollected} items collected. Can you beat my run?\n\n${gameUrl}`;
+
+    let imageBlob = null;
+    try {
+      imageBlob = await this.generateShareCard(d);
+    } catch (e) {
+      console.error('Card generation failed:', e);
+    }
+
+    // Try native share with image first (mobile)
+    if (imageBlob && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'ending.png', { type: 'image/png' })] })) {
+      try {
+        const file = new File([imageBlob], 'my-ending.png', { type: 'image/png' });
+        await navigator.share({
+          title: STORY.title,
+          text: shareText,
+          files: [file],
+        });
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return; // user cancelled
+        // fall through to other methods
+      }
+    }
+
+    // Try native share with text only
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: STORY.title, text: shareText, url: gameUrl });
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+      }
+    }
+
+    // Fallback: copy text to clipboard, and offer image download if we made one
+    try {
+      await navigator.clipboard.writeText(shareText);
+      this.showShareToast('Copied to clipboard! Paste it anywhere to share.');
+    } catch (e) {
+      this.showShareToast('Could not copy automatically — try again.');
+    }
+
+    if (imageBlob) {
+      this.downloadShareCard(imageBlob);
+    }
+  },
+
+  generateShareCard(d) {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 675;
+      const ctx = canvas.getContext('2d');
+
+      // Background
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      bgGrad.addColorStop(0, '#0a0a12');
+      bgGrad.addColorStop(1, '#12121e');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Border frame
+      ctx.strokeStyle = '#2a2a3e';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+      // Gold accent color depends on ending type
+      const accentColor = d.type === 'victory' ? '#c9a84c' : (d.type === 'defeat' ? '#a02828' : '#3a6ea5');
+
+      // Eyebrow
+      ctx.fillStyle = '#8a7430';
+      ctx.font = '600 22px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.save();
+      ctx.letterSpacing = '6px';
+      ctx.fillText(STORY.title.toUpperCase(), canvas.width / 2, 100);
+      ctx.restore();
+
+      // Ornament line
+      const ornGrad = ctx.createLinearGradient(canvas.width/2 - 150, 0, canvas.width/2 + 150, 0);
+      ornGrad.addColorStop(0, 'rgba(138,116,48,0)');
+      ornGrad.addColorStop(0.5, 'rgba(138,116,48,0.8)');
+      ornGrad.addColorStop(1, 'rgba(138,116,48,0)');
+      ctx.strokeStyle = ornGrad;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width/2 - 150, 130);
+      ctx.lineTo(canvas.width/2 + 150, 130);
+      ctx.stroke();
+
+      // Ending title (wrap if needed)
+      ctx.fillStyle = accentColor;
+      ctx.font = 'bold 52px Georgia, serif';
+      this.wrapCanvasText(ctx, d.title, canvas.width / 2, 220, 1000, 58);
+
+      // Subtitle
+      ctx.fillStyle = '#9a9aaa';
+      ctx.font = 'italic 26px Georgia, serif';
+      this.wrapCanvasText(ctx, d.subtitle, canvas.width / 2, 320, 900, 34);
+
+      // Stats row
+      const stats = [
+        { label: 'ACHIEVEMENTS', value: `${d.achievementCount}` },
+        { label: 'ITEMS FOUND', value: `${d.itemsCollected}` },
+        { label: 'SCENES', value: `${d.scenesVisited}` },
+        { label: 'TIME', value: `${d.mins}m ${d.secs}s` },
+      ];
+      const statY = 480;
+      const statSpacing = canvas.width / (stats.length + 1);
+      stats.forEach((s, i) => {
+        const x = statSpacing * (i + 1);
+        ctx.fillStyle = '#c9a84c';
+        ctx.font = 'bold 36px Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(s.value, x, statY);
+        ctx.fillStyle = '#6a6a7a';
+        ctx.font = '600 14px Georgia, serif';
+        ctx.fillText(s.label, x, statY + 30);
+      });
+
+      // Footer
+      ctx.fillStyle = '#6a6a7a';
+      ctx.font = '18px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('An Interactive Fiction Adventure by ' + STORY.author, canvas.width / 2, 610);
+
+      canvas.toBlob((blob) => resolve(blob), 'image/png');
+    });
+  },
+
+  wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+    ctx.textAlign = 'center';
+    const words = text.split(' ');
+    let line = '';
+    const lines = [];
+    for (let word of words) {
+      const testLine = line + word + ' ';
+      if (ctx.measureText(testLine).width > maxWidth && line !== '') {
+        lines.push(line.trim());
+        line = word + ' ';
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line.trim());
+    const startY = y - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+  },
+
+  downloadShareCard(blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'my-ending-card.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
+
+  showShareToast(msg) {
+    const toast = document.getElementById('share-toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('visible');
+    setTimeout(() => toast.classList.remove('visible'), 3500);
   },
 
   // --- Achievements ---
